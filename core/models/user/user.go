@@ -14,7 +14,7 @@ type User struct {
 }
 
 // CreateUser create user instance based on given username and password
-func CreateUser(username string, password string, email string) (*User, error) {
+func CreateUser(username string, password string) (*User, error) {
 	hashedPassword, err := hashAndSaltPassword(password)
 	if err != nil {
 		return nil, err
