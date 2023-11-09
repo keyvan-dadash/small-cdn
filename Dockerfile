@@ -4,7 +4,7 @@ WORKDIR /go/src/small-cdn
 
 COPY go.mod go.sum ./
 
-RUN go mod download
+RUN GOPROXY=https://goproxy.io,direct go mod download
 
 COPY . .
 
