@@ -9,7 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type DictoDBInfo struct {
+type CDNDBInfo struct {
 	Addr     string
 	Username string
 	Password string
@@ -17,7 +17,7 @@ type DictoDBInfo struct {
 	Port     int32
 }
 
-func CreateDictoDBClient(dbInfo *DictoDBInfo) *pg.DB {
+func CreateCDNDBClient(dbInfo *CDNDBInfo) *pg.DB {
 	db := pg.Connect(&pg.Options{
 		Addr:     fmt.Sprintf("%s:%d", dbInfo.Addr, dbInfo.Port),
 		User:     dbInfo.Username,

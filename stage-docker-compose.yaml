@@ -1,0 +1,55 @@
+version: '3'
+
+services: 
+  small-cdn:
+    image: small-cdn
+    build: 
+        context: .
+        dockerfile: Dockerfile
+    env_file: 
+        - ./small-cdn.env
+    ports:
+        - 8080:8080
+    restart: on-failure
+    networks:
+        - backend
+    depends_on: 
+        - redis-auth
+        - db
+
+  redis-auth:
+    image: "redis"
+    ports: 
+      - "127.0.0.1:10332:6379"
+    restart: on-failure
+    networks: 
+      - backend
+
+  db:
+    image: postgres:latest
+    restart: on-failure
+    environment:
+        - POSTGRES_DB=small-cdn
+        - POSTGRES_USER=postgres
+        - POSTGRES_PASSWORD=postgres
+        - PGDATA=/var/lib/postgresql/data/pgdata
+    ports:
+        - '10438:5432'
+    volumes: 
+        - ./data:/var/lib/postgresql/data:rw
+    networks:
+        - backend
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: on-failure
+    environment:
+        PGADMIN_DEFAULT_EMAIL: admin@admin.com
+        PGADMIN_DEFAULT_PASSWORD: root
+    ports:
+        - "10333:80"
+    networks:
+        - backend
+
+networks: 
+  backend:
