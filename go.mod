@@ -35,6 +35,8 @@ require (
 	github.com/redis/go-redis/v9 v9.3.0 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
+	github.com/tdewolff/minify/v2 v2.20.6 // indirect
+	github.com/tdewolff/parse/v2 v2.7.4 // indirect
 	github.com/tmthrgd/go-hex v0.0.0-20190904060850-447a3041c3bc // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect

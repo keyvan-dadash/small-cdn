@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 
 	"github.com/sod-lol/small-cdn/core/models/cache"
 	"github.com/sod-lol/small-cdn/core/models/user"
@@ -27,26 +28,39 @@ func processCacheFile(cacheLog *cache.CacheLog, cacheFile cache.CacheFile) {
 	var m1, m2 runtime.MemStats
 	runtime.ReadMemStats(&m1)
 	start := time.Now()
-	cacheFile.Process()
+	err := cacheFile.Process()
 	duration := time.Now().Sub(start)
 	runtime.ReadMemStats(&m2)
+
+	if err != nil {
+		logrus.Errorf("[Error] Could not process cache file: %v", err)
+		cacheLog = nil
+		return
+	}
 
 	cacheLog.ConsumedMemory = m2.TotalAlloc - m1.TotalAlloc
 	cacheLog.DurationOfMinifcation = duration
 
-	err := os.MkdirAll(cacheLog.FilePath, 0700)
+	err = os.MkdirAll(cacheLog.FilePath, 0700)
 	if err != nil {
+		logrus.Errorf("[Error] Could not Mkdir folders: %v", err)
 		cacheLog = nil
 		return
 	}
 
 	f, err := os.OpenFile(cacheLog.FilePath, os.O_CREATE, 0700)
 	if err != nil {
+		logrus.Errorf("[Error] Could not create file: %v", err)
 		cacheLog = nil
 		return
 	}
 
-	cacheFile.Write(bufio.NewWriter(f))
+	err = cacheFile.Write(bufio.NewWriter(f))
+	if err != nil {
+		logrus.Errorf("[Error] Could write to the file: %v", err)
+		cacheLog = nil
+		return
+	}
 }
 
 func processCacheFilesInParrarel(cacheLogs []*cache.CacheLog, cacheFiles []cache.CacheFile) error {
@@ -102,7 +116,11 @@ func HandleAddCache() gin.HandlerFunc {
 			cacheFiles[index].Read(strings.NewReader(item.Content))
 		}
 
-		processCacheFilesInParrarel(cacheLogs, cacheFiles)
+		err := processCacheFilesInParrarel(cacheLogs, cacheFiles)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
 
 		c.JSON(http.StatusCreated, gin.H{})
 	}

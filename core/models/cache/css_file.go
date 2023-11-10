@@ -1,26 +1,43 @@
 package cache
 
-import "io"
+import (
+	"bytes"
+	"io"
+
+	"github.com/tdewolff/minify/v2"
+)
 
 type CSSCacheFile struct {
+	minifier *minify.M
+	reader   io.Reader
+	buffer   *bytes.Buffer
 }
 
-func CreateCSSCacheFile() *CSSCacheFile {
-	return &CSSCacheFile{}
+func CreateCSSCacheFile(minifier *minify.M) *CSSCacheFile {
+	return &CSSCacheFile{
+		minifier: minifier,
+		buffer:   new(bytes.Buffer),
+	}
 }
 
-func (j *CSSCacheFile) Write(writer io.Writer) error {
+func (c *CSSCacheFile) Write(writer io.Writer) error {
+	_, err := writer.Write(c.buffer.Bytes())
+	return err
+}
+
+func (c *CSSCacheFile) Read(reader io.Reader) error {
+	c.reader = reader
 	return nil
 }
 
-func (j *CSSCacheFile) Read(reader io.Reader) error {
+func (c *CSSCacheFile) Process() error {
+	if err := c.minifier.Minify("text/css", c.buffer, c.reader); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (j *CSSCacheFile) Process() error {
-	return nil
-}
-
-func (j *CSSCacheFile) GetCacheFileType() uint8 {
-	return kJSFile
+func (c *CSSCacheFile) GetCacheFileType() uint8 {
+	return kCSSFile
 }
