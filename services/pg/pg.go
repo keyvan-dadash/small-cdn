@@ -1,12 +1,12 @@
 package postgres
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/go-pg/pg/v10"
-	"github.com/go-pg/pg/v10/orm"
 	"github.com/sirupsen/logrus"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type CDNDBInfo struct {
@@ -15,35 +15,30 @@ type CDNDBInfo struct {
 	Password string
 	DBName   string
 	Port     int32
+	Log      bool
 }
 
-func CreateCDNDBClient(dbInfo *CDNDBInfo) *pg.DB {
-	db := pg.Connect(&pg.Options{
-		Addr:     fmt.Sprintf("%s:%d", dbInfo.Addr, dbInfo.Port),
-		User:     dbInfo.Username,
-		Password: dbInfo.Password,
-		Database: dbInfo.DBName,
-	})
+func (c *CDNDBInfo) GetDSN() string {
+	return fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=Asia/Tehran",
+		c.Addr, c.Username, c.Password, c.DBName, c.Port)
+}
 
-	ctx := context.Background()
-
-	_, err := db.ExecContext(ctx, "SELECT 1")
+func CreateCDNDBClient(dbInfo *CDNDBInfo) *gorm.DB {
+	db, err := gorm.Open(postgres.Open(dbInfo.GetDSN()), &gorm.Config{})
 	if err != nil {
-		logrus.Fatalf("[Falat] Cannot connect to database. err = %v", err)
+		logrus.Fatalf("[Fatal] Cannot connect to database. err = %v", err)
 		panic(err)
+	}
+
+	if dbInfo.Log {
+		db.Logger.LogMode(logger.Info)
+	} else {
+		db.Logger.LogMode(logger.Error)
 	}
 
 	return db
 }
 
-func CreateSchema(db *pg.DB, models ...interface{}) error {
-	for _, model := range models {
-		err := db.Model(model).CreateTable(&orm.CreateTableOptions{
-			Temp: true,
-		})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+func CreateSchema(db *gorm.DB, models ...interface{}) error {
+	return db.AutoMigrate(models)
 }

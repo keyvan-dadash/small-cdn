@@ -53,7 +53,7 @@ func HandleLogin(redisDB *redis.Redis) gin.HandlerFunc {
 			return
 		}
 
-		genratedToken, err := token.CreateToken(retrivedUser.Username)
+		genratedToken, err := token.CreateToken(retrivedUser.Username, retrivedUser.ID)
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

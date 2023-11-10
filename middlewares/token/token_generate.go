@@ -17,6 +17,7 @@ type AccessTokenDetail struct {
 
 	//below filed's is extra filed that we extract from token
 	Username string
+	UserID   uint
 }
 
 type RefreshTokenDetail struct {
@@ -26,6 +27,7 @@ type RefreshTokenDetail struct {
 
 	//below filed's is extra filed that we extract from token
 	Username string
+	UserID   uint
 }
 
 type TokenDetails struct {
@@ -34,7 +36,7 @@ type TokenDetails struct {
 }
 
 // CreateToken is function that generate token base on given username and return generated token
-func CreateToken(username string) (*TokenDetails, error) {
+func CreateToken(username string, userID uint) (*TokenDetails, error) {
 
 	accessSecretKey := os.Getenv("ACCESS_SECRET_KEY") //you can pass keys and gain better performance bcs every time you are reading from env
 	if len(accessSecretKey) == 0 {
@@ -51,12 +53,13 @@ func CreateToken(username string) (*TokenDetails, error) {
 	//creating access
 	accessClaims := jwt.MapClaims{}
 	accessClaims["username"] = username
+	accessClaims["userID"] = userID
 
 	accessUUID := uuid.NewV4().String()
 	accessClaims["access_uuid"] = accessUUID
 
-	accessExpire := time.Now().Add(2 * time.Hour).Unix()
-	accessClaims["expire_time"] = time.Now().Add(2 * time.Hour).Unix()
+	accessExpire := time.Now().Add(20 * time.Hour).Unix()
+	accessClaims["expire_time"] = time.Now().Add(20 * time.Hour).Unix()
 
 	at := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
 
@@ -71,6 +74,7 @@ func CreateToken(username string) (*TokenDetails, error) {
 	//creating refresh
 	refreshClaims := jwt.MapClaims{}
 	refreshClaims["username"] = username
+	refreshClaims["userID"] = userID
 
 	refreshUUID := uuid.NewV4().String()
 	refreshClaims["refresh_uuid"] = refreshUUID
@@ -110,7 +114,7 @@ func (t *TokenDetails) GetRefreshToken() string {
 // therefore you should delete previous refresh token uuid from database by yourself
 func CreateTokenBasedOnRefreshToken(rt *RefreshTokenDetail) (*TokenDetails, error) {
 
-	newToken, err := CreateToken(rt.Username)
+	newToken, err := CreateToken(rt.Username, rt.UserID)
 
 	if err != nil {
 		return nil, err
@@ -160,6 +164,12 @@ func ExtractRefreshTokenFrom(refreshToken string) (*RefreshTokenDetail, error) {
 			return nil, fmt.Errorf("token is invalid because cannot retrieve username")
 		}
 
+		userID, ok := claims["userID"].(float64)
+
+		if !ok {
+			return nil, fmt.Errorf("token is invalid because cannot retrieve userID")
+		}
+
 		//the reason that we convert expire time to float 64 its kinda weird
 		// it seems when we retrive json from browser its convert to float 64
 		//because js only support 64 floating points so we should first conver to float64
@@ -178,6 +188,7 @@ func ExtractRefreshTokenFrom(refreshToken string) (*RefreshTokenDetail, error) {
 			RefreshTokenUUID:   refreshUUID,
 			RefreshTokenExpire: refreshExpireTime,
 			Username:           username,
+			UserID:             uint(userID),
 		}, nil
 	}
 
@@ -198,7 +209,7 @@ func ExtractAccessTokenFrom(accessToken string) (*AccessTokenDetail, error) {
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("token is expired")
+		return nil, err
 	}
 
 	if _, ok := token.Claims.(jwt.Claims); !ok && !token.Valid {
@@ -220,6 +231,13 @@ func ExtractAccessTokenFrom(accessToken string) (*AccessTokenDetail, error) {
 			return nil, fmt.Errorf("token is invalid because cannot retrieve username")
 		}
 
+		fmt.Println(claims)
+
+		userID, ok := claims["userID"].(float64)
+		if !ok {
+			return nil, fmt.Errorf("token is invalid because cannot retrieve userID")
+		}
+
 		//the reason that we convert epire time to float 64 its kinda weird
 		// it seems when we retrive json from browser its convert to float 64
 		//because js only support 64 floating points so we should first conver to float64
@@ -238,6 +256,7 @@ func ExtractAccessTokenFrom(accessToken string) (*AccessTokenDetail, error) {
 			AccessTokenUUID:   accessUUID,
 			AccessTokenExpire: accessExpireTime,
 			Username:          username,
+			UserID:            uint(userID),
 		}, nil
 	}
 

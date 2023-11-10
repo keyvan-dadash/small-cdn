@@ -5,12 +5,13 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-pg/pg/extra/pgdebug"
-	"github.com/go-pg/pg/v10"
-	"github.com/go-pg/pg/v10/orm"
+	"gorm.io/gorm"
 
+	"github.com/sod-lol/small-cdn/core/models/cache"
 	"github.com/sod-lol/small-cdn/core/models/user"
+	"github.com/sod-lol/small-cdn/middlewares/token"
 	"github.com/sod-lol/small-cdn/routers/auth"
+	cache_router "github.com/sod-lol/small-cdn/routers/cache"
 	"github.com/sod-lol/small-cdn/services/pg"
 	"github.com/sod-lol/small-cdn/services/redis"
 )
@@ -42,39 +43,15 @@ func GetRouter() *CDNRouter {
 	return instance
 }
 
-func createSchema(db *pg.DB) error {
-	models := []interface{}{
-		(*user.User)(nil),
-	}
-
-	for _, model := range models {
-		err := db.Model(model).CreateTable(&orm.CreateTableOptions{})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+func createSchema(db *gorm.DB) error {
+	return db.AutoMigrate(user.User{}, cache.CacheLog{})
 }
 
-func dropTables(db *pg.DB) error {
-	models := []interface{}{
-		(*user.User)(nil),
-	}
-
-	for _, model := range models {
-		err := db.Model(model).DropTable(&orm.DropTableOptions{
-			IfExists: true,
-			Cascade:  true,
-		})
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	return nil
+func dropTables(db *gorm.DB) error {
+	return db.Migrator().DropTable(user.User{}, cache.CacheLog{})
 }
 
-func reconstructSchema(db *pg.DB) error {
+func reconstructSchema(db *gorm.DB) error {
 
 	err := dropTables(db)
 	if err != nil {
@@ -93,21 +70,23 @@ func main() {
 	defer root.Done()
 
 	session := postgres.CreateCDNDBClient(&postgres.CDNDBInfo{
-		Addr:     "db",
+		Addr:     "127.0.0.1",
 		Username: "postgres",
 		Password: "postgres",
 		DBName:   "small-cdn",
-		Port:     5432,
+		Port:     10438,
+		Log:      true,
 	})
 
-	session.AddQueryHook(pgdebug.DebugHook{
-		// Print all queries.
-		Verbose: true,
-	})
-
-	defer session.Close()
+	db, err := session.DB()
+	if err != nil {
+		panic(err)
+	} else {
+		defer db.Close()
+	}
 
 	user.CreateUserRepo(session)
+	cache.CreateCacheRepo(session)
 
 	// if err := createSchema(session); err != nil {
 	// 	panic(err)
@@ -125,7 +104,7 @@ func main() {
 	// 	return
 	// }
 
-	redisAuth := redis.CreateRedisClient("redis-auth:6379", "", 0)
+	redisAuth := redis.CreateRedisClient("127.0.0.1:10332", "", 0)
 	ctxWithRedis := context.WithValue(root, "redisDB", redisAuth)
 
 	cdn := createCDNRouter()
@@ -136,6 +115,9 @@ func main() {
 		})
 	})
 
+	jwtMiddleware := token.TokenMiddleWareAuth(redisAuth)
+
 	auth.HandleAuthentication(ctxWithRedis, cdn.Group("/auth"))
+	cache_router.HandleCacheing(ctxWithRedis, cdn.Group("/cache"), jwtMiddleware)
 	cdn.Run()
 }

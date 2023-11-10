@@ -13,7 +13,7 @@ import (
 // TokenMiddleWareAuth is middleware that do token authentication
 func TokenMiddleWareAuth(redis *redis.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		username, err := AccessTokenValidation(redis, c.Request)
+		username, userID, err := AccessTokenValidation(redis, c.Request)
 
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err.Error())
@@ -22,25 +22,26 @@ func TokenMiddleWareAuth(redis *redis.Redis) gin.HandlerFunc {
 		}
 
 		c.Set("username", username)
+		c.Set("userID", userID)
 
 		c.Next()
 	}
 }
 
 // AccessTokenValidation is function that validate access token and return username
-func AccessTokenValidation(redis *redis.Redis, r *http.Request) (string, error) {
+func AccessTokenValidation(redis *redis.Redis, r *http.Request) (string, uint, error) {
 
 	accessToken, err := VerifyAccessToken(r)
 
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 
 	if isContain, _ := redis.Contain(accessToken.AccessTokenUUID); !isContain {
-		return "", fmt.Errorf("token is invalid or expired")
+		return "", 0, fmt.Errorf("token is invalid or expired")
 	}
 
-	return accessToken.Username, nil
+	return accessToken.Username, accessToken.UserID, nil
 
 }
 

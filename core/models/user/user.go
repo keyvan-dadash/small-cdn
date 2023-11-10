@@ -3,14 +3,17 @@ package user
 import (
 	"errors"
 
-	uuid "github.com/satori/go.uuid"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
+
+	"github.com/sod-lol/small-cdn/core/models/cache"
 )
 
 type User struct {
-	Uuid     string `pg:",pk"`
-	Username string `pg:",unique,notnull"`
-	Password string `pg:",notnull"`
+	gorm.Model
+	Username  string           `gorm:"unique"`
+	Password  string           `gorm:"not null"`
+	CacheLogs []cache.CacheLog `gorm:"foreignKey:UserID"`
 }
 
 // CreateUser create user instance based on given username and password
@@ -21,7 +24,6 @@ func CreateUser(username string, password string) (*User, error) {
 	}
 
 	return &User{
-		Uuid:     uuid.NewV4().String(),
 		Username: username,
 		Password: hashedPassword,
 	}, nil

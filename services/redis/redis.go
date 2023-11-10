@@ -17,7 +17,7 @@ type Redis struct {
 func CreateRedisClient(Addr string, Password string, DB int) *Redis {
 	return &Redis{
 		client: redis.NewClient(&redis.Options{
-			Addr:     "redis-auth:6379",
+			Addr:     "127.0.0.1:10332",
 			Password: "", // no password set
 			DB:       0,  // use default DB
 		}),
