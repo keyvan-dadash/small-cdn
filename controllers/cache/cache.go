@@ -3,7 +3,6 @@ package cache
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -183,7 +182,6 @@ func HandleListOfCacheFiles() gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{})
 			return
 		}
-		fmt.Println(cacheFiles)
 
 		var cacheLogsRes []cacheLogResBody
 		for _, item := range cacheFiles {

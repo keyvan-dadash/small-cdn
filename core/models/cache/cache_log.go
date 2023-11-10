@@ -16,7 +16,7 @@ const (
 )
 
 const (
-	basePath = "/home/sod/go-projects/small-cdn/opt"
+	basePath = "/opt"
 )
 
 type CacheLog struct {

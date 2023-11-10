@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"strconv"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -68,13 +71,18 @@ func main() {
 
 	root := context.Background()
 	defer root.Done()
+	postgres_port := os.Getenv("POSTGRES_PORT")
+	port, err := strconv.Atoi(postgres_port)
+	if err != nil {
+		panic(err)
+	}
 
 	session := postgres.CreateCDNDBClient(&postgres.CDNDBInfo{
-		Addr:     "127.0.0.1",
-		Username: "postgres",
-		Password: "postgres",
+		Addr:     os.Getenv("POSTGRES_ADDR"),
+		Username: os.Getenv("POSTGRES_USER"),
+		Password: os.Getenv("POSTGRES_PASSWORD"),
 		DBName:   "small-cdn",
-		Port:     10438,
+		Port:     int32(port),
 		Log:      true,
 	})
 
@@ -104,16 +112,12 @@ func main() {
 	// 	return
 	// }
 
-	redisAuth := redis.CreateRedisClient("127.0.0.1:10332", "", 0)
+	redisAddr := fmt.Sprintf("%s:%s", os.Getenv("REDIS_ADDR"), os.Getenv("REDIS_PORT"))
+
+	redisAuth := redis.CreateRedisClient(redisAddr, "", 0)
 	ctxWithRedis := context.WithValue(root, "redisDB", redisAuth)
 
 	cdn := createCDNRouter()
-
-	cdn.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
 
 	jwtMiddleware := token.TokenMiddleWareAuth(redisAuth)
 
