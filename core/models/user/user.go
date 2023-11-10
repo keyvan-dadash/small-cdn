@@ -24,8 +24,9 @@ func CreateUser(username string, password string) (*User, error) {
 	}
 
 	return &User{
-		Username: username,
-		Password: hashedPassword,
+		Username:  username,
+		Password:  hashedPassword,
+		CacheLogs: []cache.CacheLog{},
 	}, nil
 }
 

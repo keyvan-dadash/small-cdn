@@ -40,9 +40,9 @@ func (ur *UserRepo) RetrieveUserPreloadCacheLogs(username string) (err error, lo
 	var user User
 	result := ur.DB.Model(&User{}).Preload("CacheLogs").Where("username = ?", username).First(&user)
 	if result.Error != nil {
-		return nil, user.CacheLogs
+		return nil, []cache.CacheLog{}
 	}
-	return result.Error, []cache.CacheLog{}
+	return result.Error, user.CacheLogs
 }
 
 func (ur *UserRepo) UpdateUser(user *User) error {

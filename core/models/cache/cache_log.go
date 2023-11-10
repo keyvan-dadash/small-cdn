@@ -12,11 +12,11 @@ const (
 
 	kCSSFile
 
-	kImgFile
+	kSimpleFile
 )
 
 const (
-	basePath = "/opt"
+	basePath = "/home/sod/go-projects/small-cdn/opt"
 )
 
 type CacheLog struct {
@@ -50,9 +50,9 @@ func ConvertFileTypeToString(fileType uint8) (error, string) {
 			return nil, "css"
 		}
 
-	case kImgFile:
+	case kSimpleFile:
 		{
-			return nil, "img"
+			return nil, "simple"
 		}
 
 	default:

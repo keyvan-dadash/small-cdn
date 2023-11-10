@@ -231,8 +231,6 @@ func ExtractAccessTokenFrom(accessToken string) (*AccessTokenDetail, error) {
 			return nil, fmt.Errorf("token is invalid because cannot retrieve username")
 		}
 
-		fmt.Println(claims)
-
 		userID, ok := claims["userID"].(float64)
 		if !ok {
 			return nil, fmt.Errorf("token is invalid because cannot retrieve userID")

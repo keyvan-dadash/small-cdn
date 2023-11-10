@@ -59,11 +59,12 @@ func CreateCacheFileFactory(cacheLog *CacheLog, fileTypeStr string) (error, Cach
 			cacheFile = CreateCSSCacheFile(minifier)
 		}
 
-	case "image":
+	case "simple":
 		{
-			cacheLog.FileType = kImgFile
-			cacheFile = CreateIMGCacheFile()
+			cacheLog.FileType = kSimpleFile
+			cacheFile = CreateSimpleCacheFile()
 		}
+
 	default:
 		{
 			return ErrUnkownFileType, nil

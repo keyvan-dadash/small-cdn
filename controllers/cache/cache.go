@@ -3,8 +3,10 @@ package cache
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -21,7 +23,7 @@ type cacheFileReqBody struct {
 	Type    string `form:"type" json:"type" xml:"type"  binding:"required"`
 	Name    string `form:"name" json:"name" xml:"name"  binding:"required"`
 	Content string `form:"content" json:"content" xml:"content"  binding:"required"`
-	Minify  bool   `form:"minify" json:"minify" xml:"minify"  binding:"required"`
+	Minify  bool   `form:"minify" json:"minify" xml:"minify"`
 }
 
 func processCacheFile(cacheLog *cache.CacheLog, cacheFile cache.CacheFile) {
@@ -41,26 +43,39 @@ func processCacheFile(cacheLog *cache.CacheLog, cacheFile cache.CacheFile) {
 	cacheLog.ConsumedMemory = m2.TotalAlloc - m1.TotalAlloc
 	cacheLog.DurationOfMinifcation = duration
 
-	err = os.MkdirAll(cacheLog.FilePath, 0700)
+	dir, _ := filepath.Split(cacheLog.FilePath)
+	err = os.MkdirAll(dir, 0700)
 	if err != nil {
 		logrus.Errorf("[Error] Could not Mkdir folders: %v", err)
 		cacheLog = nil
 		return
 	}
 
-	f, err := os.OpenFile(cacheLog.FilePath, os.O_CREATE, 0700)
+	f, err := os.Create(cacheLog.FilePath)
 	if err != nil {
 		logrus.Errorf("[Error] Could not create file: %v", err)
 		cacheLog = nil
 		return
 	}
 
-	err = cacheFile.Write(bufio.NewWriter(f))
+	w := bufio.NewWriter(f)
+	err = cacheFile.Write(w)
 	if err != nil {
 		logrus.Errorf("[Error] Could write to the file: %v", err)
 		cacheLog = nil
 		return
 	}
+
+	w.Flush()
+	f, err = os.Open(cacheLog.FilePath)
+	stats, err := f.Stat()
+	if err != nil {
+		logrus.Errorf("[Error] Couldnt get file's stats: %v", err)
+		cacheLog = nil
+		return
+	}
+
+	cacheLog.FileSize = uint64(stats.Size())
 }
 
 func processCacheFilesInParrarel(cacheLogs []*cache.CacheLog, cacheFiles []cache.CacheFile) error {
@@ -104,7 +119,15 @@ func HandleAddCache() gin.HandlerFunc {
 			cacheLog := cache.CreateCacheLog(item.Name, username)
 			cacheLogs = append(cacheLogs, cacheLog)
 			cacheLog.UserID = userID
-			err, cacheFile := cache.CreateCacheFileFactory(cacheLog, strings.ToLower(item.Type))
+			var cacheLogType string
+			if item.Minify {
+				cacheLogType = strings.ToLower(item.Type)
+			} else {
+				cacheLogType = "simple"
+			}
+
+			err, cacheFile := cache.CreateCacheFileFactory(cacheLog, cacheLogType)
+
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
@@ -132,6 +155,7 @@ type cacheLogResBody struct {
 	FileType              string
 	DurationOfMinifcation time.Duration
 	ConsumedMemory        uint64
+	CreatedAt             time.Time
 }
 
 func convertCacheLogToCacheLogResBody(cacheFile *cache.CacheLog) cacheLogResBody {
@@ -146,6 +170,7 @@ func convertCacheLogToCacheLogResBody(cacheFile *cache.CacheLog) cacheLogResBody
 		FileType:              cacheFileType,
 		DurationOfMinifcation: cacheFile.DurationOfMinifcation,
 		ConsumedMemory:        cacheFile.ConsumedMemory,
+		CreatedAt:             cacheFile.CreatedAt,
 	}
 }
 
@@ -158,6 +183,7 @@ func HandleListOfCacheFiles() gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{})
 			return
 		}
+		fmt.Println(cacheFiles)
 
 		var cacheLogsRes []cacheLogResBody
 		for _, item := range cacheFiles {

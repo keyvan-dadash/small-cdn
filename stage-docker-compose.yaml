@@ -1,6 +1,24 @@
 version: '3'
 
 services: 
+  small-cdn:
+    image: small-cdn
+    build: 
+        context: .
+        dockerfile: Dockerfile
+    env_file: 
+        - ./small-cdn.env
+    ports:
+        - 8080:8080
+    restart: on-failure
+    volumes: 
+        - ./opt:/opt:rw
+    networks:
+        - backend
+    depends_on: 
+        - redis-auth
+        - db
+          
   redis-auth:
     image: "redis"
     ports: 

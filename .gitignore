@@ -20,4 +20,5 @@
 
 #postgres files
 data*
+opt
 sql*
